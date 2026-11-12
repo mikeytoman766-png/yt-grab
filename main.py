@@ -69,7 +69,9 @@ def friendly(err: Exception) -> HTTPException:
 
 
 def base_opts() -> dict:
-    opts = {"quiet": True, "no_warnings": True, "noplaylist": True}
+    opts = {"quiet": True, "no_warnings": True, "noplaylist": True,
+            "extractor_args": {"youtube": {
+                "player_client": ["default", "tv", "web_safari"]}}}
     if COOKIES:
         opts["cookiefile"] = COOKIES
     return opts

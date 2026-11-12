@@ -51,6 +51,7 @@ def check_url(url: str) -> str:
 
 def friendly(err: Exception) -> HTTPException:
     msg = str(err).lower()
+    print("yt-dlp error:", err, flush=True)  # shows in Render logs
     if "not a bot" in msg:
         return HTTPException(429, "YouTube is asking this server to prove it's not a bot. Add a cookies file (YTDLP_COOKIES_CONTENT).")
     if "confirm your age" in msg or "age-restricted" in msg:
@@ -63,7 +64,8 @@ def friendly(err: Exception) -> HTTPException:
         return HTTPException(404, "This video is unavailable or has been removed.")
     if "unsupported url" in msg or "valid url" in msg:
         return HTTPException(400, "That doesn't look like a valid video link.")
-    return HTTPException(502, "Couldn't fetch this video. Try again, or redeploy to update yt-dlp.")
+    # Unknown error: show the real reason so it can be diagnosed.
+    return HTTPException(502, "Couldn't fetch this video: " + str(err)[:300])
 
 
 def base_opts() -> dict:
@@ -141,6 +143,8 @@ async def inspect(url: str = Query(..., min_length=5)):
             info = await asyncio.to_thread(ydl.extract_info, url, False)
     except yt_dlp.utils.DownloadError as e:
         raise friendly(e)
+    except Exception as e:
+        raise friendly(e)
     return {
         "title": info.get("title", "Untitled"),
         "thumbnail": info.get("thumbnail"),
@@ -167,9 +171,10 @@ async def download(req: DownloadRequest, background_tasks: BackgroundTasks):
         except yt_dlp.utils.DownloadError as e:
             cleanup(job)
             raise friendly(e)
-        except Exception:
+        except Exception as e:
             cleanup(job)
-            raise HTTPException(500, "Processing failed. Is FFmpeg installed on the server?")
+            print("download error:", repr(e), flush=True)
+            raise HTTPException(500, "Processing failed: " + str(e)[:300])
 
     background_tasks.add_task(cleanup, job)
     return FileResponse(

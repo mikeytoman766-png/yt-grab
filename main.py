@@ -64,14 +64,16 @@ def friendly(err: Exception) -> HTTPException:
         return HTTPException(404, "This video is unavailable or has been removed.")
     if "unsupported url" in msg or "valid url" in msg:
         return HTTPException(400, "That doesn't look like a valid video link.")
-    # Unknown error: show the real reason so it can be diagnosed.
     return HTTPException(502, "Couldn't fetch this video: " + str(err)[:300])
 
 
 def base_opts() -> dict:
-        opts = {"quiet": False, "no_warnings": False, "noplaylist": True,
-            "extractor_args": {"youtube": {
-                "player_client": ["default", "tv", "web_safari"]}}}
+    opts = {
+        "quiet": False,
+        "no_warnings": False,
+        "noplaylist": True,
+        "extractor_args": {"youtube": {"player_client": ["default", "tv", "web_safari"]}},
+    }
     if COOKIES:
         opts["cookiefile"] = COOKIES
     return opts
@@ -143,8 +145,6 @@ async def inspect(url: str = Query(..., min_length=5)):
     try:
         with yt_dlp.YoutubeDL(base_opts()) as ydl:
             info = await asyncio.to_thread(ydl.extract_info, url, False)
-    except yt_dlp.utils.DownloadError as e:
-        raise friendly(e)
     except Exception as e:
         raise friendly(e)
     return {
